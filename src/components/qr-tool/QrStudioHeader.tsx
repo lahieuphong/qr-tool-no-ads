@@ -5,10 +5,15 @@ import { useLanguage } from "@/components/providers/LanguageProvider";
 import { useThemeMode } from "@/components/providers/ThemeProvider";
 import { cn } from "@/lib/qr-tool";
 
-const BRAND_LOGO_SRC = "/logo/qr-tool.png";
-const GITHUB_LOGO_SRC = "/logo/github.png";
-const THEME_LIGHT_ICON_SRC = "/icon/theme-light.png";
-const THEME_DARK_ICON_SRC = "/icon/theme-dark.png";
+const BASE_PATH =
+  process.env.NODE_ENV === "production" ? "/qr-tool-no-ads" : "";
+
+const asset = (path: string) => `${BASE_PATH}${path}`;
+
+const BRAND_LOGO_SRC = asset("/logo/qr-tool.png");
+const GITHUB_LOGO_SRC = asset("/logo/github.png");
+const THEME_LIGHT_ICON_SRC = asset("/logo/theme-light.png");
+const THEME_DARK_ICON_SRC = asset("/logo/theme-dark.png");
 
 function BrandLogo() {
   return (
@@ -19,6 +24,7 @@ function BrandLogo() {
       height={56}
       className="h-full w-full object-contain"
       priority
+      unoptimized
     />
   );
 }
@@ -39,6 +45,7 @@ function GithubLogo({
       width={width}
       height={height}
       className={className}
+      unoptimized
     />
   );
 }
@@ -125,11 +132,12 @@ export default function QrStudioHeader() {
                   )}
                 >
                   <Image
-                    src={isEnglish ? "/flags/us.png" : "/flags/vn.png"}
+                    src={isEnglish ? asset("/flags/us.png") : asset("/flags/vn.png")}
                     alt={isEnglish ? "English" : "Tiếng Việt"}
                     width={18}
                     height={18}
                     className="h-[18px] w-[18px] rounded-full object-cover"
+                    unoptimized
                   />
                 </span>
               </button>
@@ -246,11 +254,12 @@ export default function QrStudioHeader() {
                 )}
               >
                 <Image
-                  src={isEnglish ? "/flags/us.png" : "/flags/vn.png"}
+                  src={isEnglish ? asset("/flags/us.png") : asset("/flags/vn.png")}
                   alt={isEnglish ? "English" : "Tiếng Việt"}
                   width={24}
                   height={24}
                   className="h-6 w-6 rounded-full object-cover"
+                  unoptimized
                 />
               </span>
             </button>
