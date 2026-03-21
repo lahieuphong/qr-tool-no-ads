@@ -12,8 +12,8 @@ const asset = (path: string) => `${BASE_PATH}${path}`;
 
 const BRAND_LOGO_SRC = asset("/logo/qr-tool.png");
 const GITHUB_LOGO_SRC = asset("/logo/github.png");
-const THEME_LIGHT_ICON_SRC = asset("/logo/theme-light.png");
-const THEME_DARK_ICON_SRC = asset("/logo/theme-dark.png");
+const THEME_LIGHT_ICON_SRC = asset("/icon/theme-light.png");
+const THEME_DARK_ICON_SRC = asset("/icon/theme-dark.png");
 
 function BrandLogo() {
   return (
