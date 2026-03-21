@@ -1,9 +1,12 @@
 "use client";
 
+import { useLanguage } from "@/components/providers/LanguageProvider";
 import { useQrStudio } from "@/hooks/useQrStudio";
 import { QUALITY_OPTIONS, cn, isHexColor } from "@/lib/qr-tool";
 
 export default function QrStudio() {
+  const { t } = useLanguage();
+
   const {
     url,
     setUrl,
@@ -17,7 +20,6 @@ export default function QrStudio() {
     setErrorLevel,
     quality,
     setQuality,
-    qualityOption,
     outputWidth,
     fgColor,
     setFgColor,
@@ -32,15 +34,13 @@ export default function QrStudio() {
     recentUrls,
     qrPng,
     qrSvg,
-    generatedUrl,
-    generatedAt,
-    message,
     error,
     hydrated,
     normalizedPreview,
     hasUrl,
     isUrlReady,
-    autoStatus,
+    isGenerating,
+    generatedUrl,
     downloadPng,
     downloadSvg,
     copyUrl,
@@ -49,121 +49,291 @@ export default function QrStudio() {
     removeRecent,
   } = useQrStudio();
 
+  const localizedQualityOptions = QUALITY_OPTIONS.map((item) => ({
+    ...item,
+    label: t.qrStudio.qualityOptions[item.value].label,
+    description: t.qrStudio.qualityOptions[item.value].description,
+  }));
+
+  const autoStatusText = !hydrated
+    ? t.qrStudio.status.loading
+    : !hasUrl
+    ? t.qrStudio.status.waiting
+    : !isUrlReady
+    ? t.qrStudio.status.invalid
+    : isGenerating
+    ? t.qrStudio.status.generating
+    : generatedUrl
+    ? t.qrStudio.status.updated
+    : t.qrStudio.status.ready;
+
+  const autoStatusClass = !hydrated || !hasUrl
+    ? "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+    : !isUrlReady
+    ? "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+    : isGenerating
+    ? "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
+    : generatedUrl
+    ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+    : "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200";
+
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-900">
+    <main className="min-h-screen bg-slate-100 text-slate-900 transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100">
       <div className="mx-auto w-full max-w-7xl px-3 py-4 sm:px-4 sm:py-6 md:px-6 md:py-8 xl:px-8">
-        <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:mb-6 sm:rounded-3xl sm:p-6 md:p-8">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-            <div className="max-w-3xl">
-              <div className="mb-3 inline-flex max-w-full items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600 sm:text-xs">
-                QR Studio • Không quảng cáo
-              </div>
+        <div className="mb-4 rounded-2xl border border-slate-200 bg-white px-4 py-6 text-center shadow-sm transition-colors duration-300 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none sm:mb-6 sm:rounded-3xl sm:px-6 sm:py-8">
+          <div className="mx-auto flex max-w-3xl flex-col items-center">
+            <h1 className="text-xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-2xl md:text-3xl">
+              {t.hero.title}
+            </h1>
 
-              <h1 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl md:text-4xl xl:text-5xl">
-                Tạo mã QR chuyên nghiệp cho website của bạn
-              </h1>
-
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
-                Hệ thống sẽ tự động tạo mã QR ngay khi đường dẫn hợp lệ, không cần
-                bấm nút tạo thủ công.
-              </p>
-            </div>
-
-            <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:w-auto xl:min-w-[520px]">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <div className="text-xs text-slate-500">Chế độ</div>
-                <div className="mt-1 text-sm font-semibold">Tự động tạo QR</div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <div className="text-xs text-slate-500">Định dạng</div>
-                <div className="mt-1 text-sm font-semibold">PNG / SVG</div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <div className="text-xs text-slate-500">Chất lượng</div>
-                <div className="mt-1 text-sm font-semibold">{qualityOption.label}</div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <div className="text-xs text-slate-500">Trạng thái</div>
-                <div className="mt-1 text-sm font-semibold">Không quảng cáo</div>
-              </div>
-            </div>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400 sm:text-base">
+              {t.hero.subtitle}
+            </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)] xl:gap-6">
-          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6">
-            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-slate-950 sm:text-2xl">
-                  Cấu hình mã QR
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(380px,0.9fr)] xl:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] xl:items-stretch xl:gap-6">
+          <section className="order-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-colors duration-300 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none sm:rounded-3xl sm:p-6 xl:order-none xl:row-span-2">
+            <div className="mb-5 flex flex-col gap-3 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
+              <div className="flex flex-col items-center sm:items-start">
+                <h2 className="text-xl font-bold text-slate-950 dark:text-white sm:text-2xl">
+                  {t.qrStudio.config.title}
                 </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Chỉ cần nhập đường dẫn, QR sẽ tự động sinh khi hợp lệ.
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  {t.qrStudio.config.subtitle}
                 </p>
               </div>
 
-              <div
-                className={cn(
-                  "inline-flex w-fit items-center rounded-full border px-3 py-1 text-xs font-semibold",
-                  autoStatus.className
-                )}
-              >
-                {hydrated ? autoStatus.text : "Đang tải"}
+              <div className="flex justify-center sm:block">
+                <div
+                  className={cn(
+                    "inline-flex w-fit items-center rounded-full border px-3 py-1 text-xs font-semibold",
+                    autoStatusClass
+                  )}
+                >
+                  {autoStatusText}
+                </div>
               </div>
             </div>
 
             <div className="space-y-5">
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
-                  Đường dẫn website
+                <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  {t.qrStudio.fields.websiteUrl}
                 </label>
 
                 <input
                   type="text"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
-                  placeholder="Ví dụ: baotangmythuat.hongvan.online/chi-tiet-tac-pham/2?autoFullscreen"
-                  className="w-full min-w-0 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100 sm:text-base"
+                  placeholder="https://lahieuphong.github.io/qr-tool-no-ads/"
+                  className="w-full min-w-0 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-800 sm:text-base"
                 />
 
-                <div className="mt-2 flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="text-sm text-slate-500">
-                    {!hasUrl
-                      ? "Bạn có thể dán link bất kỳ, hệ thống sẽ tự thêm https:// nếu thiếu."
-                      : isUrlReady
-                      ? "Đường dẫn hợp lệ. QR sẽ tự động cập nhật."
-                      : "Đường dẫn chưa hợp lệ. QR sẽ chưa được tạo."}
-                  </div>
-
-                  {normalizedPreview && (
-                    <div className="max-w-full rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
-                      <div className="max-w-full truncate">{normalizedPreview}</div>
+                <div className="mt-3">
+                  {!hasUrl ? (
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                      {t.qrStudio.fields.autoAddHttps}
                     </div>
-                  )}
+                  ) : normalizedPreview ? (
+                    <div className="flex flex-col items-center">
+                      <a
+                        href={isUrlReady ? normalizedPreview : undefined}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={cn(
+                          "block w-full rounded-full border px-4 py-2.5 text-sm transition",
+                          isUrlReady
+                            ? "border-slate-200 bg-slate-100 text-slate-700 hover:border-slate-300 hover:bg-slate-200 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-700 dark:hover:text-white"
+                            : "pointer-events-none border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500"
+                        )}
+                        title={normalizedPreview}
+                        aria-label={`Open link ${normalizedPreview}`}
+                      >
+                        <span className="block truncate text-center">
+                          {normalizedPreview}
+                        </span>
+                      </a>
+
+                      <div className="mt-2 text-center text-xs font-medium text-slate-500 dark:text-slate-400">
+                        {isUrlReady
+                          ? t.qrStudio.fields.validLinkAutoUpdate
+                          : t.qrStudio.fields.invalidLink}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
-                  Tên file tải về
+                <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  {t.qrStudio.fields.downloadFileName}
                 </label>
 
                 <input
                   type="text"
                   value={fileName}
                   onChange={(e) => setFileName(e.target.value)}
-                  placeholder="Ví dụ: qr-tac-pham-02"
-                  className="w-full min-w-0 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100 sm:text-base"
+                  placeholder={t.qrStudio.fields.downloadFilePlaceholder}
+                  className="w-full min-w-0 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-800 sm:text-base"
                 />
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <span className="text-sm font-semibold text-slate-700">
-                      Kích thước
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-3 transition-colors duration-300 dark:border-slate-800 dark:bg-slate-800/60 sm:p-4 md:p-5">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                      {t.qrStudio.fields.qrColor}
+                    </label>
+                    <span className="inline-flex min-w-[92px] items-center justify-center rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-slate-500 dark:bg-slate-900 dark:text-slate-300 sm:px-3 sm:text-xs">
+                      {t.qrStudio.fields.foreground}
                     </span>
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <label className="group relative block h-11 w-11 shrink-0 cursor-pointer overflow-hidden rounded-xl border border-slate-200 bg-white p-1 shadow-sm transition hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 sm:h-12 sm:w-12">
+                      <span
+                        className="block h-full w-full rounded-xl border border-slate-200 dark:border-slate-700"
+                        style={{ backgroundColor: fgColor }}
+                      />
+                      <input
+                        type="color"
+                        value={fgColor}
+                        onChange={(e) => {
+                          setFgColor(e.target.value);
+                          setFgColorInput(e.target.value.toUpperCase());
+                        }}
+                        className="absolute inset-0 cursor-pointer opacity-0"
+                      />
+                    </label>
+
+                    <div className="min-w-0 flex-1">
+                      <div
+                        className={cn(
+                          "flex h-11 items-center rounded-2xl border bg-white px-3 shadow-sm transition dark:bg-slate-900 sm:h-12 sm:px-4",
+                          isFgColorInputValid
+                            ? "border-slate-200 focus-within:border-slate-400 focus-within:ring-4 focus-within:ring-slate-100 dark:border-slate-700 dark:focus-within:border-slate-500 dark:focus-within:ring-slate-800"
+                            : "border-red-200 focus-within:border-red-300 focus-within:ring-4 focus-within:ring-red-50 dark:border-red-800 dark:focus-within:border-red-700 dark:focus-within:ring-red-950/40"
+                        )}
+                      >
+                        <span className="mr-2 text-xs font-semibold text-slate-400 dark:text-slate-500 sm:text-sm">
+                          #
+                        </span>
+                        <input
+                          type="text"
+                          value={fgColorInput.replace(/^#/, "")}
+                          onChange={(e) => {
+                            const raw = e.target.value
+                              .toUpperCase()
+                              .replace(/[^0-9A-F]/g, "");
+                            const nextValue = `#${raw}`;
+                            setFgColorInput(nextValue);
+
+                            if (isHexColor(nextValue)) {
+                              setFgColor(nextValue);
+                            }
+                          }}
+                          maxLength={8}
+                          placeholder="111827"
+                          className={cn(
+                            "w-full min-w-0 bg-transparent text-sm font-semibold tracking-[0.04em] outline-none sm:text-base",
+                            isFgColorInputValid
+                              ? "text-slate-900 dark:text-slate-100"
+                              : "text-red-600 dark:text-red-400"
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {!isFgColorInputValid && (
+                    <p className="mt-2 text-[11px] text-red-600 dark:text-red-400 sm:text-xs">
+                      {t.qrStudio.fields.invalidHex}
+                    </p>
+                  )}
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-3 transition-colors duration-300 dark:border-slate-800 dark:bg-slate-800/60 sm:p-4 md:p-5">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                      {t.qrStudio.fields.backgroundColor}
+                    </label>
+                    <span className="inline-flex min-w-[92px] items-center justify-center rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-slate-500 dark:bg-slate-900 dark:text-slate-300 sm:px-3 sm:text-xs">
+                      {t.qrStudio.fields.background}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <label className="group relative block h-11 w-11 shrink-0 cursor-pointer overflow-hidden rounded-xl border border-slate-200 bg-white p-1 shadow-sm transition hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 sm:h-12 sm:w-12">
+                      <span
+                        className="block h-full w-full rounded-xl border border-slate-200 dark:border-slate-700"
+                        style={{ backgroundColor: bgColor }}
+                      />
+                      <input
+                        type="color"
+                        value={bgColor}
+                        onChange={(e) => {
+                          setBgColor(e.target.value);
+                          setBgColorInput(e.target.value.toUpperCase());
+                        }}
+                        className="absolute inset-0 cursor-pointer opacity-0"
+                      />
+                    </label>
+
+                    <div className="min-w-0 flex-1">
+                      <div
+                        className={cn(
+                          "flex h-11 items-center rounded-2xl border bg-white px-3 shadow-sm transition dark:bg-slate-900 sm:h-12 sm:px-4",
+                          isBgColorInputValid
+                            ? "border-slate-200 focus-within:border-slate-400 focus-within:ring-4 focus-within:ring-slate-100 dark:border-slate-700 dark:focus-within:border-slate-500 dark:focus-within:ring-slate-800"
+                            : "border-red-200 focus-within:border-red-300 focus-within:ring-4 focus-within:ring-red-50 dark:border-red-800 dark:focus-within:border-red-700 dark:focus-within:ring-red-950/40"
+                        )}
+                      >
+                        <span className="mr-2 text-xs font-semibold text-slate-400 dark:text-slate-500 sm:text-sm">
+                          #
+                        </span>
+                        <input
+                          type="text"
+                          value={bgColorInput.replace(/^#/, "")}
+                          onChange={(e) => {
+                            const raw = e.target.value
+                              .toUpperCase()
+                              .replace(/[^0-9A-F]/g, "");
+                            const nextValue = `#${raw}`;
+                            setBgColorInput(nextValue);
+
+                            if (isHexColor(nextValue)) {
+                              setBgColor(nextValue);
+                            }
+                          }}
+                          maxLength={8}
+                          placeholder="FFFFFF"
+                          className={cn(
+                            "w-full min-w-0 bg-transparent text-sm font-semibold tracking-[0.04em] outline-none sm:text-base",
+                            isBgColorInputValid
+                              ? "text-slate-900 dark:text-slate-100"
+                              : "text-red-600 dark:text-red-400"
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {!isBgColorInputValid && (
+                    <p className="mt-2 text-[11px] text-red-600 dark:text-red-400 sm:text-xs">
+                      {t.qrStudio.fields.invalidHex}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-3 transition-colors duration-300 dark:border-slate-800 dark:bg-slate-800/60 sm:p-4">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                      {t.qrStudio.fields.size}
+                    </span>
+                    <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300 sm:px-3">
                       {size}px
                     </span>
                   </div>
@@ -175,16 +345,16 @@ export default function QrStudio() {
                     step={20}
                     value={size}
                     onChange={(e) => setSize(Number(e.target.value))}
-                    className="w-full accent-slate-900"
+                    className="w-full accent-slate-900 dark:accent-white"
                   />
                 </div>
 
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <span className="text-sm font-semibold text-slate-700">
-                      Lề QR
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-3 transition-colors duration-300 dark:border-slate-800 dark:bg-slate-800/60 sm:p-4">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                      {t.qrStudio.fields.margin}
                     </span>
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+                    <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300 sm:px-3">
                       {margin}
                     </span>
                   </div>
@@ -196,34 +366,36 @@ export default function QrStudio() {
                     step={1}
                     value={margin}
                     onChange={(e) => setMargin(Number(e.target.value))}
-                    className="w-full accent-slate-900"
+                    className="w-full accent-slate-900 dark:accent-white"
                   />
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                <div className="mb-3 text-sm font-semibold text-slate-700">
-                  Chất lượng mã QR
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 transition-colors duration-300 dark:border-slate-800 dark:bg-slate-800/60">
+                <div className="mb-3 text-center text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  {t.qrStudio.quality.title}
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                  {QUALITY_OPTIONS.map((item) => (
+                  {localizedQualityOptions.map((item) => (
                     <button
                       key={item.value}
                       type="button"
                       onClick={() => setQuality(item.value)}
                       className={cn(
-                        "rounded-2xl border p-4 text-left transition",
+                        "rounded-2xl border p-4 text-center transition",
                         quality === item.value
-                          ? "border-slate-900 bg-slate-900 text-white"
-                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+                          ? "border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                       )}
                     >
                       <div className="text-sm font-semibold">{item.label}</div>
                       <div
                         className={cn(
                           "mt-1 text-xs leading-6",
-                          quality === item.value ? "text-slate-200" : "text-slate-500"
+                          quality === item.value
+                            ? "text-slate-200 dark:text-slate-700"
+                            : "text-slate-500 dark:text-slate-400"
                         )}
                       >
                         {item.description}
@@ -232,15 +404,16 @@ export default function QrStudio() {
                   ))}
                 </div>
 
-                <div className="mt-3 rounded-2xl bg-white px-4 py-3 text-xs leading-6 text-slate-600">
-                  PNG hiện tại sẽ được xuất ở khoảng <strong>{outputWidth}px</strong>.
-                  SVG luôn sắc nét do là định dạng vector.
+                <div className="mt-3 rounded-2xl bg-white px-4 py-3 text-center text-xs leading-6 text-slate-600 transition-colors duration-300 dark:bg-slate-900 dark:text-slate-300">
+                  {t.qrStudio.quality.outputPrefix}{" "}
+                  <strong className="text-slate-900 dark:text-white">{outputWidth}px</strong>.{" "}
+                  {t.qrStudio.quality.outputSuffix}
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                <div className="mb-3 text-sm font-semibold text-slate-700">
-                  Mức chống lỗi
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 transition-colors duration-300 dark:border-slate-800 dark:bg-slate-800/60">
+                <div className="mb-3 text-center text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  {t.qrStudio.errorCorrection.title}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -252,8 +425,8 @@ export default function QrStudio() {
                       className={cn(
                         "rounded-2xl border px-4 py-3 text-sm font-semibold transition",
                         errorLevel === level
-                          ? "border-slate-900 bg-slate-900 text-white"
-                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+                          ? "border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                       )}
                     >
                       {level}
@@ -261,311 +434,155 @@ export default function QrStudio() {
                   ))}
                 </div>
 
-                <p className="mt-3 text-xs leading-6 text-slate-500">
-                  QR sẽ tự cập nhật lại mỗi khi bạn đổi mức chống lỗi.
+                <p className="mt-3 text-center text-xs leading-6 text-slate-500 dark:text-slate-400">
+                  {t.qrStudio.errorCorrection.description}
                 </p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                  <label className="mb-3 block text-sm font-semibold text-slate-700">
-                    Màu QR
-                  </label>
-
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <input
-                      type="color"
-                      value={fgColor}
-                      onChange={(e) => {
-                        setFgColor(e.target.value);
-                        setFgColorInput(e.target.value);
-                      }}
-                      className="h-12 w-full rounded-xl border border-slate-200 bg-white sm:w-16"
-                    />
-
-                    <input
-                      type="text"
-                      value={fgColorInput}
-                      onChange={(e) => {
-                        const nextValue = e.target.value;
-                        setFgColorInput(nextValue);
-
-                        if (isHexColor(nextValue)) {
-                          setFgColor(nextValue);
-                        }
-                      }}
-                      className={cn(
-                        "w-full min-w-0 rounded-2xl border bg-white px-4 py-3 text-sm outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-100",
-                        isFgColorInputValid
-                          ? "border-slate-200 text-slate-900"
-                          : "border-red-200 text-red-600"
-                      )}
-                    />
-                  </div>
-
-                  {!isFgColorInputValid && (
-                    <p className="mt-2 text-xs text-red-600">
-                      Mã màu chưa hợp lệ. Hệ thống đang giữ màu QR hợp lệ trước đó.
-                    </p>
-                  )}
-                </div>
-
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                  <label className="mb-3 block text-sm font-semibold text-slate-700">
-                    Màu nền
-                  </label>
-
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <input
-                      type="color"
-                      value={bgColor}
-                      onChange={(e) => {
-                        setBgColor(e.target.value);
-                        setBgColorInput(e.target.value);
-                      }}
-                      className="h-12 w-full rounded-xl border border-slate-200 bg-white sm:w-16"
-                    />
-
-                    <input
-                      type="text"
-                      value={bgColorInput}
-                      onChange={(e) => {
-                        const nextValue = e.target.value;
-                        setBgColorInput(nextValue);
-
-                        if (isHexColor(nextValue)) {
-                          setBgColor(nextValue);
-                        }
-                      }}
-                      className={cn(
-                        "w-full min-w-0 rounded-2xl border bg-white px-4 py-3 text-sm outline-none focus:border-slate-400 focus:ring-4 focus:ring-slate-100",
-                        isBgColorInputValid
-                          ? "border-slate-200 text-slate-900"
-                          : "border-red-200 text-red-600"
-                      )}
-                    />
-                  </div>
-
-                  {!isBgColorInputValid && (
-                    <p className="mt-2 text-xs text-red-600">
-                      Mã màu chưa hợp lệ. Hệ thống đang giữ màu nền hợp lệ trước đó.
-                    </p>
-                  )}
-                </div>
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <button
                   onClick={copyUrl}
-                  className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                  className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                 >
-                  Sao chép link
+                  {t.qrStudio.actions.copyLink}
                 </button>
 
                 <button
                   onClick={clearForm}
-                  className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                  className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                 >
-                  Xóa nội dung
+                  {t.qrStudio.actions.clearContent}
                 </button>
               </div>
 
-              {(message || error) && (
-                <div
-                  className={cn(
-                    "rounded-2xl border px-4 py-3 text-sm",
-                    error
-                      ? "border-red-200 bg-red-50 text-red-700"
-                      : "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  )}
-                >
-                  {error || message}
+              {error && (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
+                  {error}
                 </div>
               )}
-
-              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <h3 className="text-sm font-semibold text-slate-700">
-                    Lịch sử link gần đây
-                  </h3>
-                  <span className="shrink-0 text-xs text-slate-400">
-                    Tối đa 6 link
-                  </span>
-                </div>
-
-                {recentUrls.length === 0 ? (
-                  <p className="text-sm text-slate-500">
-                    Chưa có lịch sử. Khi QR được tạo thành công, link sẽ xuất hiện ở đây.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {recentUrls.map((item) => (
-                      <div
-                        key={item}
-                        className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-2 sm:flex-row sm:items-center"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => setUrl(item)}
-                          className="min-w-0 flex-1 rounded-xl px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100"
-                        >
-                          <span className="block truncate">{item}</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => removeRecent(item)}
-                          className="rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-500 transition hover:bg-slate-100 sm:text-center"
-                        >
-                          Xóa
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
             </div>
           </section>
 
-          <section className="space-y-4 xl:sticky xl:top-6 xl:self-start">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6">
-              <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-950 sm:text-2xl">
-                    Xem trước mã QR
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Hệ thống tự động cập nhật khi dữ liệu hợp lệ.
-                  </p>
-                </div>
+          <section className="order-1 flex min-h-0 flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-colors duration-300 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none sm:rounded-3xl sm:p-6 xl:order-none">
+            <div className="mb-5 flex flex-col gap-3 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
+              <div className="flex flex-col items-center sm:items-start">
+                <h2 className="text-xl font-bold text-slate-950 dark:text-white sm:text-2xl">
+                  {t.qrStudio.preview.title}
+                </h2>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  {t.qrStudio.preview.subtitle}
+                </p>
+              </div>
 
+              <div className="flex justify-center sm:block">
                 <div
                   className={cn(
                     "inline-flex w-fit items-center rounded-full border px-3 py-1 text-xs font-semibold",
-                    autoStatus.className
+                    autoStatusClass
                   )}
                 >
-                  {autoStatus.text}
+                  {autoStatusText}
                 </div>
               </div>
+            </div>
 
-              <div className="rounded-[28px] border border-dashed border-slate-200 bg-slate-50 p-4 sm:p-5">
+            <div className="flex min-h-[300px] flex-1 items-center justify-center rounded-[28px] border border-dashed border-slate-200 bg-slate-50 p-4 transition-colors duration-300 dark:border-slate-700 dark:bg-slate-800/50 sm:min-h-[340px] sm:p-5 xl:min-h-0">
+              <div className="flex h-full w-full items-center justify-center rounded-[24px] bg-white p-4 transition-colors duration-300 dark:bg-slate-900 sm:p-6">
                 {qrPng ? (
-                  <div className="flex items-center justify-center">
-                    <div className="w-full max-w-[420px] rounded-[28px] bg-white p-3 shadow-sm sm:p-4">
-                      <img
-                        src={qrPng}
-                        alt="QR Preview"
-                        className="mx-auto h-auto w-full max-w-[260px] sm:max-w-[300px] md:max-w-[340px]"
-                      />
-                    </div>
-                  </div>
+                  <img
+                    src={qrPng}
+                    alt="QR Preview"
+                    className="block max-h-full max-w-full object-contain"
+                  />
                 ) : (
-                  <div className="flex min-h-[260px] flex-col items-center justify-center rounded-[24px] bg-white px-4 text-center sm:min-h-[320px] sm:px-6">
-                    <div className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      Preview
+                  <div className="flex flex-col items-center justify-center text-center">
+                    <div className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+                      {t.qrStudio.preview.emptyBadge}
                     </div>
 
-                    <h3 className="mt-4 text-lg font-bold text-slate-800 sm:text-xl">
-                      Chưa có mã QR
+                    <h3 className="mt-4 text-lg font-bold text-slate-800 dark:text-white sm:text-xl">
+                      {t.qrStudio.preview.emptyTitle}
                     </h3>
 
-                    <p className="mt-2 max-w-md text-sm leading-7 text-slate-500">
-                      Hãy nhập một đường dẫn hợp lệ ở bên trái. Ngay khi hợp lệ, mã QR sẽ tự động xuất hiện tại đây.
+                    <p className="mt-2 max-w-md text-sm leading-7 text-slate-500 dark:text-slate-400">
+                      {t.qrStudio.preview.emptyDescription}
                     </p>
                   </div>
                 )}
               </div>
-
-              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <button
-                  onClick={downloadPng}
-                  disabled={!qrPng}
-                  className="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Tải PNG
-                </button>
-
-                <button
-                  onClick={downloadSvg}
-                  disabled={!qrSvg}
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Tải SVG
-                </button>
-
-                <button
-                  onClick={printQr}
-                  disabled={!qrPng}
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  In mã QR
-                </button>
-              </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6">
-              <h3 className="text-lg font-bold text-slate-950">
-                Thông tin đầu ra
+            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <button
+                onClick={downloadPng}
+                disabled={!qrPng}
+                className="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+              >
+                {t.qrStudio.preview.downloadPng}
+              </button>
+
+              <button
+                onClick={downloadSvg}
+                disabled={!qrSvg}
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                {t.qrStudio.preview.downloadSvg}
+              </button>
+
+              <button
+                onClick={printQr}
+                disabled={!qrPng}
+                className="col-span-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 sm:col-span-1"
+              >
+                {t.qrStudio.preview.printQr}
+              </button>
+            </div>
+          </section>
+
+          <section className="order-3 flex min-h-[280px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-colors duration-300 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none sm:min-h-[320px] sm:rounded-3xl sm:p-6 xl:order-none xl:min-h-0">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                {t.qrStudio.recent.title}
               </h3>
+              <span className="shrink-0 text-xs text-slate-400 dark:text-slate-500">
+                {t.qrStudio.recent.limit}
+              </span>
+            </div>
 
-              <div className="mt-4 space-y-4">
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                    Link đang được mã hóa
-                  </div>
-                  <div className="mt-2 break-all text-sm leading-7 text-slate-800">
-                    {generatedUrl || "Chưa có dữ liệu"}
-                  </div>
-                </div>
+            {recentUrls.length === 0 ? (
+              <div className="flex min-h-0 flex-1 items-center justify-center">
+                <p className="text-center text-sm text-slate-500 dark:text-slate-400">
+                  {t.qrStudio.recent.empty}
+                </p>
+              </div>
+            ) : (
+              <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                <div className="space-y-2">
+                  {recentUrls.map((item) => (
+                    <div
+                      key={item}
+                      className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 transition-colors duration-300 dark:border-slate-800 dark:bg-slate-800/60 sm:flex-row sm:items-center"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setUrl(item)}
+                        className="min-w-0 flex-1 rounded-xl bg-white px-3 py-3 text-left text-sm text-slate-700 transition hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                      >
+                        <span className="block truncate">{item}</span>
+                      </button>
 
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                      Tên file
+                      <button
+                        type="button"
+                        onClick={() => removeRecent(item)}
+                        className="shrink-0 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 sm:text-center"
+                      >
+                        {t.qrStudio.recent.remove}
+                      </button>
                     </div>
-                    <div className="mt-2 break-all text-sm font-medium text-slate-800">
-                      {fileName.trim() || "qr-code"}
-                    </div>
-                  </div>
-
-                  <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                      Thời gian tạo
-                    </div>
-                    <div className="mt-2 text-sm font-medium text-slate-800">
-                      {generatedAt || "Chưa tạo"}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                      Chất lượng hiện tại
-                    </div>
-                    <div className="mt-2 text-sm font-medium text-slate-800">
-                      {qualityOption.label}
-                    </div>
-                  </div>
-
-                  <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                      Kích thước PNG xuất ra
-                    </div>
-                    <div className="mt-2 text-sm font-medium text-slate-800">
-                      {outputWidth}px
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm leading-7 text-amber-800">
-                  QR này không chèn quảng cáo vì nó chứa trực tiếp link bạn nhập vào.
-                  Nếu trang đích của bạn không có quảng cáo thì khi người dùng quét
-                  cũng sẽ không thấy quảng cáo trung gian.
+                  ))}
                 </div>
               </div>
-            </div>
+            )}
           </section>
         </div>
       </div>
