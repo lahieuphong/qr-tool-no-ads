@@ -4,17 +4,103 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import {
   AUTO_GENERATE_DELAY,
+  DEFAULT_FILE_NAME,
+  DEFAULT_QUALITY,
   DEFAULT_STATE,
-  ExportQuality,
-  PersistedState,
+  MAX_RECENT_URLS,
   STORAGE_KEY,
   createSafeFileName,
   getOutputWidth,
-  getQualityOption,
   isHexColor,
   isValidUrl,
   normalizeUrl,
+  type ExportQuality,
+  type PersistedState,
 } from "@/lib/qr-tool";
+
+type QrStudioStatus =
+  | "loading"
+  | "waiting"
+  | "invalid"
+  | "generating"
+  | "updated"
+  | "ready";
+
+const QUALITY_VALUES: ExportQuality[] = ["standard", "high", "print"];
+const ERROR_LEVEL_VALUES = ["L", "M", "Q", "H"] as const;
+
+function isExportQuality(value: unknown): value is ExportQuality {
+  return typeof value === "string" && QUALITY_VALUES.includes(value as ExportQuality);
+}
+
+function isErrorLevel(
+  value: unknown
+): value is PersistedState["errorLevel"] {
+  return (
+    typeof value === "string" &&
+    ERROR_LEVEL_VALUES.includes(value as PersistedState["errorLevel"])
+  );
+}
+
+function readPersistedState(): PersistedState {
+  if (typeof window === "undefined") {
+    return DEFAULT_STATE;
+  }
+
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+
+    if (!raw) {
+      return DEFAULT_STATE;
+    }
+
+    const parsed = JSON.parse(raw) as Partial<PersistedState>;
+
+    return {
+      url: typeof parsed.url === "string" ? parsed.url : DEFAULT_STATE.url,
+      fileName:
+        typeof parsed.fileName === "string"
+          ? parsed.fileName
+          : DEFAULT_STATE.fileName,
+      size:
+        typeof parsed.size === "number" ? parsed.size : DEFAULT_STATE.size,
+      margin:
+        typeof parsed.margin === "number"
+          ? parsed.margin
+          : DEFAULT_STATE.margin,
+      errorLevel: isErrorLevel(parsed.errorLevel)
+        ? parsed.errorLevel
+        : DEFAULT_STATE.errorLevel,
+      quality: isExportQuality(parsed.quality)
+        ? parsed.quality
+        : DEFAULT_QUALITY,
+      fgColor:
+        typeof parsed.fgColor === "string" && isHexColor(parsed.fgColor)
+          ? parsed.fgColor.toUpperCase()
+          : DEFAULT_STATE.fgColor,
+      bgColor:
+        typeof parsed.bgColor === "string" && isHexColor(parsed.bgColor)
+          ? parsed.bgColor.toUpperCase()
+          : DEFAULT_STATE.bgColor,
+      recentUrls: Array.isArray(parsed.recentUrls)
+        ? parsed.recentUrls
+            .filter((item): item is string => typeof item === "string")
+            .slice(0, MAX_RECENT_URLS)
+        : DEFAULT_STATE.recentUrls,
+    };
+  } catch {
+    return DEFAULT_STATE;
+  }
+}
+
+function triggerDownload(href: string, fileName: string) {
+  const link = document.createElement("a");
+  link.href = href;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
 
 export function useQrStudio() {
   const [url, setUrl] = useState(DEFAULT_STATE.url);
@@ -22,7 +108,7 @@ export function useQrStudio() {
   const [size, setSize] = useState(DEFAULT_STATE.size);
   const [margin, setMargin] = useState(DEFAULT_STATE.margin);
   const [errorLevel, setErrorLevel] = useState(DEFAULT_STATE.errorLevel);
-  const [quality, setQuality] = useState<ExportQuality>(DEFAULT_STATE.quality);
+  const [quality, setQuality] = useState<ExportQuality>(DEFAULT_QUALITY);
 
   const [fgColor, setFgColor] = useState(DEFAULT_STATE.fgColor);
   const [bgColor, setBgColor] = useState(DEFAULT_STATE.bgColor);
@@ -36,8 +122,6 @@ export function useQrStudio() {
   const [qrPng, setQrPng] = useState("");
   const [qrSvg, setQrSvg] = useState("");
   const [generatedUrl, setGeneratedUrl] = useState("");
-  const [generatedAt, setGeneratedAt] = useState("");
-  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [hydrated, setHydrated] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -48,83 +132,35 @@ export function useQrStudio() {
   const hasUrl = url.trim().length > 0;
   const isUrlReady =
     normalizedPreview.length > 0 && isValidUrl(normalizedPreview);
-  const isFgColorInputValid = isHexColor(fgColorInput);
-  const isBgColorInputValid = isHexColor(bgColorInput);
-
-  const qualityOption = useMemo(() => getQualityOption(quality), [quality]);
   const outputWidth = useMemo(
     () => getOutputWidth(size, quality),
     [size, quality]
   );
 
-  const autoStatus = useMemo(() => {
-    if (!hasUrl) {
-      return {
-        text: "Chờ nhập link",
-        className: "border-slate-200 bg-slate-50 text-slate-600",
-      };
-    }
-
-    if (!isUrlReady) {
-      return {
-        text: "Link chưa hợp lệ",
-        className: "border-amber-200 bg-amber-50 text-amber-700",
-      };
-    }
-
-    if (isGenerating) {
-      return {
-        text: "Đang tự động tạo QR",
-        className: "border-blue-200 bg-blue-50 text-blue-700",
-      };
-    }
-
-    if (generatedUrl) {
-      return {
-        text: "Đã tự động cập nhật",
-        className: "border-emerald-200 bg-emerald-50 text-emerald-700",
-      };
-    }
-
-    return {
-      text: "Sẵn sàng",
-      className: "border-slate-200 bg-slate-50 text-slate-600",
-    };
-  }, [generatedUrl, hasUrl, isGenerating, isUrlReady]);
+  const status = useMemo<QrStudioStatus>(() => {
+    if (!hydrated) return "loading";
+    if (!hasUrl) return "waiting";
+    if (!isUrlReady) return "invalid";
+    if (isGenerating) return "generating";
+    if (generatedUrl) return "updated";
+    return "ready";
+  }, [generatedUrl, hasUrl, hydrated, isGenerating, isUrlReady]);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+    const persisted = readPersistedState();
 
-      if (raw) {
-        const parsed = JSON.parse(raw) as PersistedState;
-
-        const nextUrl = parsed.url ?? DEFAULT_STATE.url;
-        const nextFileName = parsed.fileName ?? DEFAULT_STATE.fileName;
-        const nextSize = parsed.size ?? DEFAULT_STATE.size;
-        const nextMargin = parsed.margin ?? DEFAULT_STATE.margin;
-        const nextErrorLevel = parsed.errorLevel ?? DEFAULT_STATE.errorLevel;
-        const nextQuality = parsed.quality ?? DEFAULT_STATE.quality;
-        const nextFgColor = parsed.fgColor ?? DEFAULT_STATE.fgColor;
-        const nextBgColor = parsed.bgColor ?? DEFAULT_STATE.bgColor;
-        const nextRecentUrls = parsed.recentUrls ?? DEFAULT_STATE.recentUrls;
-
-        setUrl(nextUrl);
-        setFileName(nextFileName);
-        setSize(nextSize);
-        setMargin(nextMargin);
-        setErrorLevel(nextErrorLevel);
-        setQuality(nextQuality);
-        setFgColor(nextFgColor);
-        setBgColor(nextBgColor);
-        setFgColorInput(nextFgColor);
-        setBgColorInput(nextBgColor);
-        setRecentUrls(nextRecentUrls);
-      }
-    } catch {
-    } finally {
-      setHydrated(true);
-    }
+    setUrl(persisted.url);
+    setFileName(persisted.fileName);
+    setSize(persisted.size);
+    setMargin(persisted.margin);
+    setErrorLevel(persisted.errorLevel);
+    setQuality(persisted.quality);
+    setFgColor(persisted.fgColor);
+    setBgColor(persisted.bgColor);
+    setFgColorInput(persisted.fgColor);
+    setBgColorInput(persisted.bgColor);
+    setRecentUrls(persisted.recentUrls);
+    setHydrated(true);
   }, []);
 
   useEffect(() => {
@@ -144,8 +180,7 @@ export function useQrStudio() {
       };
 
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    } catch {
-    }
+    } catch {}
   }, [
     url,
     fileName,
@@ -162,34 +197,28 @@ export function useQrStudio() {
   useEffect(() => {
     if (!hydrated) return;
 
-    const normalized = normalizeUrl(url);
     generationRef.current += 1;
     const requestId = generationRef.current;
 
-    if (!normalized) {
+    if (!normalizedPreview) {
       setQrPng("");
       setQrSvg("");
       setGeneratedUrl("");
-      setGeneratedAt("");
       setError("");
-      setMessage("");
       setIsGenerating(false);
       return;
     }
 
-    if (!isValidUrl(normalized)) {
+    if (!isUrlReady) {
       setQrPng("");
       setQrSvg("");
       setGeneratedUrl("");
-      setGeneratedAt("");
       setError("Đường dẫn chưa hợp lệ.");
-      setMessage("");
       setIsGenerating(false);
       return;
     }
 
     setError("");
-    setMessage("");
     setIsGenerating(true);
 
     const timer = window.setTimeout(async () => {
@@ -205,8 +234,8 @@ export function useQrStudio() {
         } as const;
 
         const [png, svg] = await Promise.all([
-          QRCode.toDataURL(normalized, options),
-          QRCode.toString(normalized, {
+          QRCode.toDataURL(normalizedPreview, options),
+          QRCode.toString(normalizedPreview, {
             ...options,
             type: "svg",
           }),
@@ -216,13 +245,14 @@ export function useQrStudio() {
 
         setQrPng(png);
         setQrSvg(svg);
-        setGeneratedUrl(normalized);
-        setGeneratedAt(new Date().toLocaleString("vi-VN"));
+        setGeneratedUrl(normalizedPreview);
         setRecentUrls((prev) => {
-          const merged = [normalized, ...prev.filter((item) => item !== normalized)];
-          return merged.slice(0, 6);
+          const merged = [
+            normalizedPreview,
+            ...prev.filter((item) => item !== normalizedPreview),
+          ];
+          return merged.slice(0, MAX_RECENT_URLS);
         });
-        setMessage("Mã QR đã được tự động cập nhật.");
         setError("");
       } catch {
         if (generationRef.current !== requestId) return;
@@ -230,9 +260,7 @@ export function useQrStudio() {
         setQrPng("");
         setQrSvg("");
         setGeneratedUrl("");
-        setGeneratedAt("");
         setError("Không thể tạo mã QR. Vui lòng kiểm tra lại dữ liệu.");
-        setMessage("");
       } finally {
         if (generationRef.current === requestId) {
           setIsGenerating(false);
@@ -244,15 +272,14 @@ export function useQrStudio() {
       window.clearTimeout(timer);
     };
   }, [
-    url,
-    size,
+    hydrated,
+    normalizedPreview,
+    isUrlReady,
+    outputWidth,
     margin,
     errorLevel,
-    quality,
     fgColor,
     bgColor,
-    hydrated,
-    outputWidth,
   ]);
 
   const downloadPng = () => {
@@ -262,12 +289,7 @@ export function useQrStudio() {
       (fileName.trim() || createSafeFileName(generatedUrl || normalizedPreview)) +
       ".png";
 
-    const link = document.createElement("a");
-    link.href = qrPng;
-    link.download = name;
-    link.click();
-
-    setMessage("Đã tải file PNG.");
+    triggerDownload(qrPng, name);
     setError("");
   };
 
@@ -283,15 +305,12 @@ export function useQrStudio() {
     });
 
     const blobUrl = URL.createObjectURL(blob);
+    triggerDownload(blobUrl, name);
 
-    const link = document.createElement("a");
-    link.href = blobUrl;
-    link.download = name;
-    link.click();
+    window.setTimeout(() => {
+      URL.revokeObjectURL(blobUrl);
+    }, 1000);
 
-    URL.revokeObjectURL(blobUrl);
-
-    setMessage("Đã tải file SVG.");
     setError("");
   };
 
@@ -300,29 +319,25 @@ export function useQrStudio() {
 
     if (!value) {
       setError("Chưa có đường dẫn để sao chép.");
-      setMessage("");
       return;
     }
 
     try {
       await navigator.clipboard.writeText(value);
-      setMessage("Đã sao chép đường dẫn.");
       setError("");
     } catch {
       setError("Không thể sao chép đường dẫn.");
-      setMessage("");
     }
   };
 
   const printQr = () => {
     if (!qrPng) return;
 
-    const title = fileName.trim() || "QR Code";
+    const title = fileName.trim() || DEFAULT_FILE_NAME;
     const win = window.open("", "_blank", "width=900,height=700");
 
     if (!win) {
       setError("Không thể mở cửa sổ in.");
-      setMessage("");
       return;
     }
 
@@ -382,8 +397,6 @@ export function useQrStudio() {
     setQrPng("");
     setQrSvg("");
     setGeneratedUrl("");
-    setGeneratedAt("");
-    setMessage("");
     setError("");
   };
 
@@ -404,7 +417,6 @@ export function useQrStudio() {
     setErrorLevel,
     quality,
     setQuality,
-    qualityOption,
     outputWidth,
     fgColor,
     setFgColor,
@@ -414,21 +426,17 @@ export function useQrStudio() {
     setFgColorInput,
     bgColorInput,
     setBgColorInput,
-    isFgColorInputValid,
-    isBgColorInputValid,
     recentUrls,
     qrPng,
     qrSvg,
-    generatedUrl,
-    generatedAt,
-    message,
     error,
     hydrated,
-    isGenerating,
     normalizedPreview,
     hasUrl,
     isUrlReady,
-    autoStatus,
+    isGenerating,
+    generatedUrl,
+    status,
     downloadPng,
     downloadSvg,
     copyUrl,

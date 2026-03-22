@@ -13,8 +13,20 @@ export type PersistedState = {
   recentUrls: string[];
 };
 
+export type QualityOption = {
+  value: ExportQuality;
+  label: string;
+  description: string;
+  multiplier: number;
+};
+
 export const STORAGE_KEY = "qr-studio-state";
 export const AUTO_GENERATE_DELAY = 350;
+
+export const DEFAULT_FILE_NAME = "qr-code";
+export const MAX_OUTPUT_WIDTH = 3000;
+export const MAX_RECENT_URLS = 6;
+export const DEFAULT_QUALITY: ExportQuality = "high";
 
 export const DEFAULT_STATE: PersistedState = {
   url: "",
@@ -22,18 +34,13 @@ export const DEFAULT_STATE: PersistedState = {
   size: 420,
   margin: 2,
   errorLevel: "H",
-  quality: "high",
+  quality: DEFAULT_QUALITY,
   fgColor: "#111827",
   bgColor: "#FFFFFF",
   recentUrls: [],
 };
 
-export const QUALITY_OPTIONS: Array<{
-  value: ExportQuality;
-  label: string;
-  description: string;
-  multiplier: number;
-}> = [
+export const QUALITY_OPTIONS: ReadonlyArray<QualityOption> = [
   {
     value: "standard",
     label: "Chuẩn",
@@ -82,7 +89,9 @@ export function isHexColor(value: string) {
 export function createSafeFileName(value: string) {
   try {
     const url = new URL(value);
+
     const host = url.hostname.replace(/\./g, "-");
+
     const path = url.pathname
       .replace(/^\/+|\/+$/g, "")
       .replace(/[^\w\-./]/g, "")
@@ -95,9 +104,9 @@ export function createSafeFileName(value: string) {
 
     const raw = [host, path, query].filter(Boolean).join("-");
 
-    return raw.slice(0, 80) || "qr-code";
+    return raw.slice(0, 80) || DEFAULT_FILE_NAME;
   } catch {
-    return "qr-code";
+    return DEFAULT_FILE_NAME;
   }
 }
 
@@ -106,12 +115,18 @@ export function cn(...classes: Array<string | false | null | undefined>) {
 }
 
 export function getQualityOption(value: ExportQuality) {
-  return (
-    QUALITY_OPTIONS.find((item) => item.value === value) ?? QUALITY_OPTIONS[1]
+  const matched = QUALITY_OPTIONS.find((item) => item.value === value);
+  if (matched) return matched;
+
+  const fallback = QUALITY_OPTIONS.find(
+    (item) => item.value === DEFAULT_QUALITY
   );
+  if (fallback) return fallback;
+
+  return QUALITY_OPTIONS[0];
 }
 
 export function getOutputWidth(size: number, quality: ExportQuality) {
   const multiplier = getQualityOption(quality).multiplier;
-  return Math.min(size * multiplier, 3000);
+  return Math.min(size * multiplier, MAX_OUTPUT_WIDTH);
 }

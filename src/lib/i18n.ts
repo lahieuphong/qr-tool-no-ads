@@ -3,6 +3,105 @@ export type Language = "vi" | "en";
 export const LANGUAGE_STORAGE_KEY = "qr-tool-language";
 export const DEFAULT_LANGUAGE: Language = "vi";
 
+type QualityOptionDictionary = {
+  label: string;
+  description: string;
+};
+
+export type AppDictionary = {
+  header: {
+    brandTitle: string;
+    brandSub: string;
+    github: string;
+    vi: string;
+    en: string;
+  };
+
+  hero: {
+    title: string;
+    subtitle: string;
+  };
+
+  qrStudio: {
+    config: {
+      title: string;
+      subtitle: string;
+    };
+
+    status: {
+      loading: string;
+      waiting: string;
+      invalid: string;
+      generating: string;
+      updated: string;
+      ready: string;
+    };
+
+    fields: {
+      websiteUrl: string;
+      autoAddHttps: string;
+      validLinkAutoUpdate: string;
+      invalidLink: string;
+      downloadFileName: string;
+      downloadFilePlaceholder: string;
+      qrColor: string;
+      foreground: string;
+      foregroundShort: string;
+      backgroundColor: string;
+      background: string;
+      backgroundShort: string;
+      invalidHex: string;
+      size: string;
+      margin: string;
+    };
+
+    quality: {
+      title: string;
+      outputPrefix: string;
+      outputSuffix: string;
+    };
+
+    qualityOptions: {
+      standard: QualityOptionDictionary;
+      high: QualityOptionDictionary;
+      print: QualityOptionDictionary;
+    };
+
+    errorCorrection: {
+      title: string;
+      description: string;
+    };
+
+    actions: {
+      copyLink: string;
+      clearContent: string;
+    };
+
+    preview: {
+      title: string;
+      subtitle: string;
+      emptyBadge: string;
+      emptyTitle: string;
+      emptyDescription: string;
+      downloadPng: string;
+      downloadSvg: string;
+      printQr: string;
+    };
+
+    recent: {
+      title: string;
+      limit: string;
+      empty: string;
+      remove: string;
+    };
+  };
+
+  footer: {
+    copyright: string;
+    madeBy: string;
+  };
+};
+
 export const dictionaries = {
   vi: {
     header: {
@@ -40,11 +139,13 @@ export const dictionaries = {
         validLinkAutoUpdate: "Link hợp lệ • QR tự cập nhật",
         invalidLink: "Link chưa hợp lệ",
         downloadFileName: "Tên file tải về",
-        downloadFilePlaceholder: "Ví dụ: qr-tac-pham-02",
+        downloadFilePlaceholder: "qr-tool-no-ads",
         qrColor: "Màu QR",
         foreground: "Foreground",
+        foregroundShort: "FG",
         backgroundColor: "Màu nền",
         background: "Background",
+        backgroundShort: "BG",
         invalidHex: "Mã HEX chưa hợp lệ.",
         size: "Kích thước",
         margin: "Lề QR",
@@ -145,11 +246,13 @@ export const dictionaries = {
         validLinkAutoUpdate: "Valid link • QR auto updated",
         invalidLink: "Invalid link",
         downloadFileName: "Download file name",
-        downloadFilePlaceholder: "Example: qr-item-02",
+        downloadFilePlaceholder: "qr-tool-no-ads",
         qrColor: "QR color",
         foreground: "Foreground",
+        foregroundShort: "FG",
         backgroundColor: "Background color",
         background: "Background",
+        backgroundShort: "BG",
         invalidHex: "Invalid HEX code.",
         size: "Size",
         margin: "QR margin",
@@ -214,4 +317,4 @@ export const dictionaries = {
       madeBy: "Made by",
     },
   },
-} as const;
+} satisfies Record<Language, AppDictionary>;

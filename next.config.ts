@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 
+const REPO_NAME = "qr-tool-no-ads";
 const isProd = process.env.NODE_ENV === "production";
 
 const nextConfig: NextConfig = {
@@ -7,8 +8,8 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-  basePath: isProd ? "/qr-tool-no-ads" : "",
-  assetPrefix: isProd ? "/qr-tool-no-ads/" : "",
+  basePath: isProd ? `/${REPO_NAME}` : "",
+  assetPrefix: isProd ? `/${REPO_NAME}/` : "",
 };
 
 export default nextConfig;
