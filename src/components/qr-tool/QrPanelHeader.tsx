@@ -34,7 +34,7 @@ export default function QrPanelHeader({
       <div className="flex justify-center sm:block">
         <div
           className={cn(
-            "inline-flex w-fit items-center rounded-full border px-3 py-1 text-xs font-semibold",
+            "inline-flex w-fit min-w-36 shrink-0 items-center justify-center rounded-full border px-4 py-2 text-center text-xs font-semibold leading-tight",
             badgeClassName
           )}
         >
