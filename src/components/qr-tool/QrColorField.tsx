@@ -38,15 +38,15 @@ export default function QrColorField({
           {label}
         </label>
 
-        {/* Mobile: dùng nhãn viết tắt để tránh tràn */}
-        {/* PC: giữ nguyên nhãn đầy đủ */}
+        {/* Mobile: ẩn hoàn toàn tag BG / FG */}
+        {/* PC: giữ nguyên tag đầy đủ */}
         <span
-          className="inline-flex min-w-23 items-center justify-center rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-slate-500 dark:bg-slate-900 dark:text-slate-300 sm:px-3 sm:text-xs"
+          className="hidden min-w-23 items-center justify-center rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-slate-500 dark:bg-slate-900 dark:text-slate-300 sm:inline-flex sm:px-3 sm:text-xs"
           title={tag}
           aria-label={tag}
+          data-mobile-tag={resolvedMobileTag}
         >
-          <span className="sm:hidden">{resolvedMobileTag}</span>
-          <span className="hidden sm:inline">{tag}</span>
+          {tag}
         </span>
       </div>
 
